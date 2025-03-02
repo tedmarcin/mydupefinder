@@ -1,6 +1,6 @@
 /*
  *  mydupefinder - A command-line tool to detect and remove duplicate files.
- *  Copyright (C) 2023  TedMarcin
+ *  Copyright (C) 2025  TedMarcin
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -194,17 +194,18 @@ int main(int argc, char **argv) {
             delete_dirs.push_back(argv[index]);
     }
 
-    // Dummy test prompt
-    std::string dummy_test;
-    std::cout << "Do you want to perform a dummy test (Don't actually delete)? [Y/n]: ";
-    std::getline(std::cin, dummy_test);
-    if (dummy_test.empty()) {
-        dummy_test = "y";
+    // DRY run prompt (simulate deletion without actual file removal)
+    std::string dry_run_input;
+    std::cout << "Do you want to perform a DRY run (simulate deletion without actual file removal)? [Y/n]: ";
+    std::getline(std::cin, dry_run_input);
+    bool dry_run = true;
+    if (!dry_run_input.empty() && (dry_run_input == "n" || dry_run_input == "N")) {
+        dry_run = false;
     }
 
-    // Manual deletion prompt if dummy test is not performed
+    // Manual deletion prompt if not in DRY run mode
     std::string manual_delete;
-    if (dummy_test == "n" || dummy_test == "N") {
+    if (!dry_run) {
         std::cout << "You are about to delete the files. Are you sure? [y/N]: ";
         std::string sure_delete;
         std::getline(std::cin, sure_delete);
@@ -218,7 +219,7 @@ int main(int argc, char **argv) {
             manual_delete = "y";
         }
     } else {
-        manual_delete = "n";
+        manual_delete = "dry";
     }
 
     int current_file = 0;
@@ -240,7 +241,7 @@ int main(int argc, char **argv) {
                 int percent = (current_file * 100) / total_files;
                 auto elapsed = duration_cast<seconds>(steady_clock::now() - start);
                 int estimated_total = (elapsed.count() * total_files) / current_file;
-                if (manual_delete == "n") {
+                if (manual_delete == "dry") {
                     std::cout << "Calculating " << algorithm << " hashes: " 
                               << current_file << "/" << total_files
                               << " (" << percent << "%) Elapsed: " 
@@ -309,17 +310,23 @@ int main(int argc, char **argv) {
                                     << ", Duplicates: " << duplicates << ")\n";
                             continue;
                         }
-                        try {
-                            std::filesystem::remove(files_to_delete[i]);
-                            logFile << "Deleted " << files_to_delete[i] 
+                        if (dry_run) {
+                            logFile << "DRY run: Would delete " << files_to_delete[i] 
                                     << " (Hash: " << hash 
                                     << ", Duplicates: " << duplicates << ")\n";
-                            marked_for_deletion++;
-                        } catch (const std::filesystem::filesystem_error &e) {
-                            std::cerr << "Error deleting file: " << files_to_delete[i] 
-                                      << " - " << e.what() << std::endl;
-                            logFile << "Failed to delete " << files_to_delete[i] 
-                                    << " - " << e.what() << "\n";
+                        } else {
+                            try {
+                                std::filesystem::remove(files_to_delete[i]);
+                                logFile << "Deleted " << files_to_delete[i] 
+                                        << " (Hash: " << hash 
+                                        << ", Duplicates: " << duplicates << ")\n";
+                                marked_for_deletion++;
+                            } catch (const std::filesystem::filesystem_error &e) {
+                                std::cerr << "Error deleting file: " << files_to_delete[i] 
+                                          << " - " << e.what() << std::endl;
+                                logFile << "Failed to delete " << files_to_delete[i] 
+                                        << " - " << e.what() << "\n";
+                            }
                         }
                     }
                 }
@@ -334,17 +341,23 @@ int main(int argc, char **argv) {
                     files_to_delete.erase(files_to_delete.begin());
                 }
                 for (const auto &file_to_delete : files_to_delete) {
-                    try {
-                        std::filesystem::remove(file_to_delete);
-                        logFile << "Deleted " << file_to_delete 
+                    if (dry_run) {
+                        logFile << "DRY run: Would delete " << file_to_delete 
                                 << " (Hash: " << hash 
                                 << ", Duplicates: " << duplicates << ")\n";
-                        marked_for_deletion++;
-                    } catch (const std::filesystem::filesystem_error &e) {
-                        std::cerr << "Error deleting file: " << file_to_delete 
-                                  << " - " << e.what() << std::endl;
-                        logFile << "Failed to delete " << file_to_delete 
-                                << " - " << e.what() << "\n";
+                    } else {
+                        try {
+                            std::filesystem::remove(file_to_delete);
+                            logFile << "Deleted " << file_to_delete 
+                                    << " (Hash: " << hash 
+                                    << ", Duplicates: " << duplicates << ")\n";
+                            marked_for_deletion++;
+                        } catch (const std::filesystem::filesystem_error &e) {
+                            std::cerr << "Error deleting file: " << file_to_delete 
+                                      << " - " << e.what() << std::endl;
+                            logFile << "Failed to delete " << file_to_delete 
+                                    << " - " << e.what() << "\n";
+                        }
                     }
                 }
             }
