@@ -1,6 +1,6 @@
 /*
  *  mydupefinder - A command-line tool to detect and remove duplicate files.
- *  Copyright (C) 2025  TedMarcin
+ *  Copyright (C) 2023  TedMarcin
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 
 #include <iostream>
 #include <fstream>
@@ -325,8 +324,13 @@ int main(int argc, char **argv) {
                     }
                 }
             } else {
-                // Automatic mode: if all duplicates are in the deletion directories, remove one beforehand to keep at least one file.
+                // Automatic mode: if all duplicates are in the deletion directories,
+                // keep one file and delete the rest.
                 if (files_to_delete.size() == files.size() && !files_to_delete.empty()) {
+                    // Log the kept file before deletion.
+                    logFile << "Kept " << files_to_delete[0] 
+                            << " (Hash: " << hash 
+                            << ", Duplicates: " << duplicates << ")\n";
                     files_to_delete.erase(files_to_delete.begin());
                 }
                 for (const auto &file_to_delete : files_to_delete) {
